@@ -31,14 +31,13 @@
 						<div class="layui-inline">
 							<label class="layui-form-label">服务地址</label>
 							<div class="layui-input-inline">
-								<input type="text" name="address" autocomplete="off" class="layui-input"
-									value="127.0.0.1">
+								<input type="text" v-model="form.address" autocomplete="off" class="layui-input">
 							</div>
 						</div>
 						<div class="layui-inline">
 							<label class="layui-form-label">服务端口</label>
 							<div class="layui-input-inline">
-								<input type="text" name="port" autocomplete="off" class="layui-input" value="20880">
+								<input type="text" v-model="form.port" autocomplete="off" class="layui-input">
 							</div>
 							<div class="layui-form-mid" style="padding: 0!important;">
 								<button type="button" class="layui-btn layui-btn-primary" lay-on="connect"
@@ -95,11 +94,7 @@
 	<script src="/vue/vue.global.min.js"></script>
 	<script setup>
 		const {createApp} = Vue;
-		var url = 'http://localhost:8090';
-		var element = layui.element
-			, layer = layui.layer
-			, form = layui.form
-			, $ = layui.$;
+		var url = 'http://localhost:8090', keyForm = 'dubbo-tools-form';
 		var request = (url, options) => {
 			let idx = layer.load();
 			return fetch(url, options).then(e => {
@@ -126,6 +121,8 @@
 					providers: ['test'],
 					proMethods: [],
 					form: {
+						address: '127.0.0.1',
+						port: 20880,
 						provider: '',
 						method: '',
 						params: '',
@@ -134,13 +131,16 @@
 				}
 			},
 			mounted() {
+				var formdata = localStorage.getItem(keyForm);
+				if(formdata){
+					this.form = JSON.parse(formdata);
+				}
 			},
 			methods: {
 				connect() {
-					var val = form.val();
-					// 验证通过
-					if (val) {
-						request(url + '/connect?' + $.param(val)).then(e => {
+					console.log(this.form)
+					if (this.form.address) {
+						request(url + '/connect?address='+this.form.address+'&port='+this.form.port).then(e => {
 							if (e.code == 0) {
 								request(url + '/ls/provider').then(e => {
 									if (e.code == 0) {
@@ -168,6 +168,7 @@
 					}).then(e => {
 						if (e.code == 0) {
 							this.result = e.data;
+							localStorage.setItem(keyForm, JSON.stringify(this.form));
 						}
 					}).catch(e => console.log(e))
 					return false;

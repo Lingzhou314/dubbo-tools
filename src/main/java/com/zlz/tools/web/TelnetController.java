@@ -13,7 +13,7 @@ import com.zlz.tools.utils.DubboTelnet;
 import com.zlz.tools.utils.Result;
 
 @RestController
-public class IndexController {
+public class TelnetController {
 	DubboTelnet telnet;
 
 	@GetMapping
@@ -29,12 +29,12 @@ public class IndexController {
 	
 	@GetMapping("/ls/provider")
 	public Result<String> lsProvider() {
-		return success(telnet.sendCommand("ls"));
+		return sendCommand("ls");
 	}
-	
+
 	@GetMapping("/ls/method")
 	public Result<String> lsMethod(String provider) {
-		return success(telnet.sendCommand("ls -l " + provider));
+		return sendCommand("ls -l " + provider);
 	}
 	
 	@PostMapping("/invoke")
@@ -42,6 +42,13 @@ public class IndexController {
 		bean.setMethod(bean.getMethod().replaceAll(".*?\\s+(.+?)\\(.*?\\)", "$1"));
 		String cmd = String.format("invoke %s.%s(%s)", bean.getProvider(), bean.getMethod(), bean.getParams());
 		System.out.println(cmd);
+		return sendCommand(cmd);
+	}
+	
+	private Result<String> sendCommand(String cmd) {
+		if(telnet == null || !telnet.isConnected()) {
+			return Result.error("请点击连接", null);
+		}
 		return success(telnet.sendCommand(cmd));
 	}
 	

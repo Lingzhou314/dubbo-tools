@@ -22,7 +22,7 @@ public class DubboTelnet {
     // 普通用户结束
     public DubboTelnet(String ip, int port) {
         try {
-        	if(telnet.isConnected()) {
+        	if(isConnected()) {
         		telnet.disconnect();
         	}
             telnet.connect(ip, port);
@@ -77,12 +77,9 @@ public class DubboTelnet {
         }
         return null;
     }
-    /** * 关闭连接 */
-    public void disconnect() {
-        try {
-            telnet.disconnect();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    
+    /** * 连接状态 */
+    public boolean isConnected() {
+        return telnet.isConnected();
     }
 }

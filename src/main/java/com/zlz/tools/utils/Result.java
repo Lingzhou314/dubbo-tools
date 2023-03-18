@@ -11,6 +11,10 @@ public class Result<T> {
 	String msg;
 	T data;
 	
+	public boolean isSuccess(){
+		return code == 0;
+	}
+	
 	public static Result<String> success(){
 		return new Result<>(0, null, null);
 	}
