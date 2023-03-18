@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width">
+	<title>Dubbo调用工具</title>
+	<link href="/layui/css/layui.css" rel="stylesheet">
+</head>
+
+<body>
+	<div id="app" class="layui-layout layui-layout-admin">
+		<div class="layui-header">
+			<div class="layui-logo layui-hide-xs layui-bg-black">Dubbo调用工具</div>
+		</div>
+
+		<div class="layui-side layui-bg-black">
+			<div class="layui-side-scroll">
+				<!-- 左侧导航区域（可配合layui已有的垂直导航） -->
+				<ul class="layui-nav layui-nav-tree" lay-filter="test">
+					<li class="layui-nav-item layui-this"><a href="javascript:;">Telnet调用</a></li>
+				</ul>
+			</div>
+		</div>
+
+		<div class="layui-body">
+			<!-- 内容主体区域 -->
+			<div style="padding: 15px;">
+				<form class="layui-form" @submit.prevent="invoke">
+					<div class="layui-form-item">
+						<div class="layui-inline">
+							<label class="layui-form-label">服务地址</label>
+							<div class="layui-input-inline">
+								<input type="text" name="address" autocomplete="off" class="layui-input"
+									value="127.0.0.1">
+							</div>
+						</div>
+						<div class="layui-inline">
+							<label class="layui-form-label">服务端口</label>
+							<div class="layui-input-inline">
+								<input type="text" name="port" autocomplete="off" class="layui-input" value="20880">
+							</div>
+							<div class="layui-form-mid" style="padding: 0!important;">
+								<button type="button" class="layui-btn layui-btn-primary" lay-on="connect"
+									@click="connect">连接</button>
+							</div>
+						</div>
+					</div>
+					<div class="layui-form-item">
+						<div class="layui-inline">
+							<label class="layui-form-label">服务接口</label>
+							<div class="layui-input-inline" style="width: 510px;">
+								<input type="text" v-model="form.provider" autocomplete="off" class="layui-input" placeholder="com.xxx.xxx">
+							</div>
+							<div class="layui-form-mid" style="padding: 0!important;">
+								<button type="button" class="layui-btn layui-btn-primary" @click="selMet">查询方法</button>
+							</div>
+						</div>
+					</div>
+					<div class="layui-form-item">
+						<div class="layui-inline">
+							<label class="layui-form-label">方法名</label>
+							<div class="layui-input-inline" style="width: 510px;">
+								<input type="text" v-model="form.method" autocomplete="off" class="layui-input" placeholder="getXxx">
+							</div>
+						</div>
+					</div>
+					<div class="layui-form-item layui-form-text">
+						<label class="layui-form-label">参数</label>
+						<div class="layui-input-block">
+							<textarea v-model="form.params" placeholder="请输入参数内容" class="layui-textarea"></textarea>
+						</div>
+					</div>
+					<div class="layui-form-item">
+						<div class="layui-input-block">
+							<button type="submit" class="layui-btn" lay-submit="">执行调用</button>
+							<button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						</div>
+					</div>
+					<div class="layui-form-item layui-form-text">
+						<label class="layui-form-label">返回结果</label>
+						<div class="layui-input-block">
+							<pre class="layui-code">{{result}}</pre>
+						</div>
+					</div>
+				</form>
+			</div>
+		</div>
+
+		<div class="layui-footer">
+			<!-- 底部固定区域 -->
+		</div>
+	</div>
+	<script src="/layui/layui.js"></script>
+	<script src="/vue/vue.global.min.js"></script>
+	<script setup>
+		const {createApp} = Vue;
+		var url = 'http://localhost:8090';
+		var element = layui.element
+			, layer = layui.layer
+			, form = layui.form
+			, $ = layui.$;
+		var request = (url, options) => {
+			let idx = layer.load();
+			return fetch(url, options).then(e => {
+				layer.close(idx);
+				return e.json();
+			}).then(e => {
+				if (e.error) {
+					layer.msg(e.error);
+					return Promise.reject(e.error);
+				}
+				if (e.code && e.code !== 0) {
+					layer.msg(e.msg)
+				}
+				return e;
+			}).catch(err => {
+				console.log(err);
+				layer.close(idx);
+			});
+		}
+		//JS 
+		var app = createApp({
+			data() {
+				return {
+					providers: ['test'],
+					proMethods: [],
+					form: {
+						provider: '',
+						method: '',
+						params: '',
+					},
+					result: ''
+				}
+			},
+			mounted() {
+			},
+			methods: {
+				connect() {
+					var val = form.val();
+					// 验证通过
+					if (val) {
+						request(url + '/connect?' + $.param(val)).then(e => {
+							if (e.code == 0) {
+								request(url + '/ls/provider').then(e => {
+									if (e.code == 0) {
+										app.result = e.data;
+									}
+								});
+							}
+						})
+					}
+				},
+				selMet(e) {
+					request(url + '/ls/method?provider=' + this.form.provider).then(e => {
+						if (e.code == 0) {
+							app.result = e.data;
+						}
+					});
+				},
+				invoke(e) {
+					request(url + '/invoke', {
+						method: 'post',
+						headers: {
+							"Content-Type": "application/json; charset=UTF-8"
+						},
+						body: JSON.stringify(this.form)
+					}).then(e => {
+						if (e.code == 0) {
+							this.result = e.data;
+						}
+					}).catch(e => console.log(e))
+					return false;
+				}
+			}
+		}).mount('#app');
+	</script>
+</body>
+
+</html>
