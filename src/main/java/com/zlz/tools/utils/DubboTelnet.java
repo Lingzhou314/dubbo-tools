@@ -25,11 +25,12 @@ public class DubboTelnet {
         	if(isConnected()) {
         		telnet.disconnect();
         	}
+        	telnet.setConnectTimeout(1000);
             telnet.connect(ip, port);
             in = telnet.getInputStream();
-            out = new PrintStream(telnet.getOutputStream());
+            out = new PrintStream(telnet.getOutputStream(), true, "UTF-8");
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
         }
     }
     
@@ -53,29 +54,27 @@ public class DubboTelnet {
             }
             return sb.toString();
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
         }
-        return null;
     }
     /** * 写操作 * * @param value */
     public void write(String value) {
         try {
-            out.println(value);
+        	out.println(value);
             out.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+        	throw new RuntimeException(e.getMessage());
         }
     }
     /** * 向目标发送命令字符串 * * @param command * @return */
     public String sendCommand(String command) {
+        write(command);
         try {
-            write(command);
-            Thread.sleep(1000);
-            return readUntil("dubbo>");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+        return readUntil("dubbo>");
     }
     
     /** * 连接状态 */
