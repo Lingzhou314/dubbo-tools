@@ -26,7 +26,7 @@
 		<div class="layui-body">
 			<!-- 内容主体区域 -->
 			<div style="padding: 15px;">
-				<form class="layui-form" @submit.prevent="invoke">
+				<form class="layui-form" lay-filter="form" @submit.prevent="invoke">
 					<div class="layui-form-item">
 						<div class="layui-inline">
 							<label class="layui-form-label">服务地址</label>
@@ -49,7 +49,7 @@
 						<div class="layui-inline">
 							<label class="layui-form-label">服务接口</label>
 							<div class="layui-input-inline" style="width: 510px;">
-								<input type="text" v-model="form.provider" autocomplete="off" class="layui-input" placeholder="com.xxx.xxx">
+								<input id="provider" type="text" v-model="form.provider" autocomplete="off" class="layui-input">
 							</div>
 							<div class="layui-form-mid" style="padding: 0!important;">
 								<button type="button" class="layui-btn layui-btn-primary" @click="selMet">查询方法</button>
@@ -93,8 +93,15 @@
 	<script src="/layui/layui.js"></script>
 	<script src="/vue/vue.global.min.js"></script>
 	<script setup>
+		layui.config({
+		  base: '/layui/plugins/'
+		}).extend({
+		  autocomplete: 'autocomplete/autocomplete'
+		}).use(['autocomplete'], function () {
+			initVue();
+		})
 		const {createApp} = Vue;
-		var url = 'http://localhost:8090', keyForm = 'dubbo-tools-form';
+		var app,base = '', keyForm = 'dubbo-tools-form';
 		var request = (url, options) => {
 			let idx = layer.load();
 			return fetch(url, options).then(e => {
@@ -114,67 +121,88 @@
 				layer.close(idx);
 			});
 		}
-		//JS 
-		var app = createApp({
-			data() {
-				return {
-					providers: ['test'],
-					proMethods: [],
-					form: {
-						address: '127.0.0.1',
-						port: 20880,
-						provider: '',
-						method: '',
-						params: '',
-					},
-					result: ''
-				}
-			},
-			mounted() {
-				var formdata = localStorage.getItem(keyForm);
-				if(formdata){
-					this.form = JSON.parse(formdata);
-				}
-			},
-			methods: {
-				connect() {
-					console.log(this.form)
-					if (this.form.address) {
-						request(url + '/connect?address='+this.form.address+'&port='+this.form.port).then(e => {
-							if (e.code == 0) {
-								request(url + '/ls/provider').then(e => {
-									if (e.code == 0) {
-										app.result = e.data;
-									}
-								});
-							}
-						})
+		function initVue(){
+			app = createApp({
+				data() {
+					return {
+						providers: ['test'],
+						proMethods: [],
+						historyForm: [],
+						form: {
+							address: '127.0.0.1',
+							port: 20880,
+							provider: '',
+							method: '',
+							params: '',
+						},
+						result: ''
 					}
 				},
-				selMet(e) {
-					request(url + '/ls/method?provider=' + this.form.provider).then(e => {
-						if (e.code == 0) {
-							app.result = e.data;
-						}
-					});
+				mounted() {
+					let localData = localStorage.getItem(keyForm);
+					if(localData){
+						this.historyForm = JSON.parse(localData);
+						this.form = JSON.parse(JSON.stringify(this.historyForm[0]));// clone
+						layui.autocomplete.render({
+							elem: '#provider',
+						    template_val: '{{d.provider}}',
+						    template_txt: '{{d.provider}}.{{d.method}}',
+							data: this.historyForm,
+							char_limit: 0,
+							onselect(d){
+								app.form =  JSON.parse(JSON.stringify(d));// clone
+							}
+						});
+					}
 				},
-				invoke(e) {
-					request(url + '/invoke', {
-						method: 'post',
-						headers: {
-							"Content-Type": "application/json; charset=UTF-8"
-						},
-						body: JSON.stringify(this.form)
-					}).then(e => {
-						if (e.code == 0) {
-							this.result = e.data;
-							localStorage.setItem(keyForm, JSON.stringify(this.form));
+				methods: {
+					connect() {
+						console.log(this.form)
+						if (this.form.address) {
+							request(base + '/connect?address='+this.form.address+'&port='+this.form.port).then(e => {
+								if (e.code == 0) {
+									request(base + '/ls/provider').then(e => {
+										if (e.code == 0) {
+											app.result = e.data;
+										}
+									});
+								}
+							})
 						}
-					}).catch(e => console.log(e))
-					return false;
+					},
+					selMet(e) {
+						request(base + '/ls/method?provider=' + this.form.provider).then(e => {
+							if (e.code == 0) {
+								app.result = e.data;
+							}
+						});
+					},
+					invoke(e) {
+						request(base + '/invoke', {
+							method: 'post',
+							headers: {
+								"Content-Type": "application/json; charset=UTF-8"
+							},
+							body: JSON.stringify(this.form)
+						}).then(e => {
+							if (e.code == 0) {
+								this.result = e.data;
+								// 保存历史记录
+								let index = this.historyForm.findIndex(e => e.provider+e.method === this.form.provider+this.form.method);
+								if(index != -1){
+									// 删除上一次相同的请求
+									this.historyForm.splice(index,1);
+								}
+								// 插入到第一个
+								this.historyForm.splice(0, 0, this.form);
+								localStorage.setItem(keyForm, JSON.stringify(this.historyForm));
+							}
+						}).catch(e => console.log(e))
+						return false;
+					}
 				}
-			}
-		}).mount('#app');
+			}).mount('#app');
+		}
 	</script>
 </body>
 
